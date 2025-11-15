@@ -15,8 +15,6 @@ This project fulfills all requirements of an end-to-end CRUD + search applicatio
 
 ## 📸 Screenshots
 
-> Replace these with your actual screenshots
-
 ### Login Page
 
 `/screenshots/login.png`
@@ -314,18 +312,3 @@ https://your-live-demo.com
 ```
 
 ---
-
-# 🙌 Final Notes
-
-This project includes:
-✔ Pagination
-✔ Search
-✔ CRUD
-✔ JWT Auth
-✔ Admin Dashboard
-✔ Dockerized PostgreSQL
-✔ Prisma setup
-✔ Frontend + Backend tests
-✔ Complete AI usage documentation
-
-All requirements for the assignment have been fulfilled.
