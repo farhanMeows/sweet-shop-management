@@ -1,4 +1,3 @@
-// backend/tests/auth.test.ts
 import request from "supertest";
 import { PrismaClient } from "@prisma/client";
 import { startServer } from "../src/server";
@@ -8,8 +7,8 @@ const prisma = new PrismaClient();
 let app: any;
 
 beforeAll(async () => {
-  app = await startServer(); // startServer returns the express app, see implementation step
-  // Ensure clean users table (make tests idempotent)
+  app = await startServer();
+
   await prisma.user.deleteMany({});
 });
 

@@ -1,4 +1,3 @@
-// backend/tests/sweets_search.test.ts
 import request from "supertest";
 import { PrismaClient } from "@prisma/client";
 import { startServer } from "../src/server";
@@ -8,9 +7,8 @@ let app: any;
 
 beforeAll(async () => {
   app = await startServer();
-  // reset tables
+  // reset table
   await prisma.sweet.deleteMany({});
-  // seed sample sweets
   await prisma.sweet.createMany({
     data: [
       { name: "Gulab Jamun", category: "Indian", price: 1.5, quantity: 100 },
@@ -32,9 +30,11 @@ describe("GET /api/sweets/search", () => {
       .get("/api/sweets/search")
       .query({ name: "Gulab" })
       .expect(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBeGreaterThanOrEqual(1);
-    expect(res.body[0].name).toContain("Gulab");
+    const payload = res.body;
+    const items = Array.isArray(payload) ? payload : payload.data;
+    expect(Array.isArray(items)).toBe(true);
+    expect(items.length).toBeGreaterThanOrEqual(1);
+    expect(items[0].name).toContain("Gulab");
   });
 
   it("search by category", async () => {
@@ -42,8 +42,10 @@ describe("GET /api/sweets/search", () => {
       .get("/api/sweets/search")
       .query({ category: "Dessert" })
       .expect(200);
+    const payload = res.body;
+    const items = Array.isArray(payload) ? payload : payload.data;
     expect(
-      res.body.every((s: any) => s.category.toLowerCase().includes("dessert"))
+      items.every((s: any) => s.category.toLowerCase().includes("dessert"))
     ).toBe(true);
   });
 
@@ -52,8 +54,10 @@ describe("GET /api/sweets/search", () => {
       .get("/api/sweets/search")
       .query({ minPrice: "1.0", maxPrice: "2.0" })
       .expect(200);
-    expect(res.body.length).toBeGreaterThanOrEqual(1);
-    expect(res.body.every((s: any) => s.price >= 1.0 && s.price <= 2.0)).toBe(
+    const payload = res.body;
+    const items = Array.isArray(payload) ? payload : payload.data;
+    expect(items.length).toBeGreaterThanOrEqual(1);
+    expect(items.every((s: any) => s.price >= 1.0 && s.price <= 2.0)).toBe(
       true
     );
   });
@@ -63,7 +67,9 @@ describe("GET /api/sweets/search", () => {
       .get("/api/sweets/search")
       .query({ q: "chocolate" })
       .expect(200);
-    expect(res.body.length).toBe(1);
-    expect(res.body[0].name.toLowerCase()).toContain("chocolate");
+    const payload = res.body;
+    const items = Array.isArray(payload) ? payload : payload.data;
+    expect(items.length).toBe(1);
+    expect(items[0].name.toLowerCase()).toContain("chocolate");
   });
 });

@@ -1,4 +1,3 @@
-// backend/tests/me.test.ts
 import request from "supertest";
 import { PrismaClient } from "@prisma/client";
 import { startServer } from "../src/server";
