@@ -1,3 +1,4 @@
+// frontend/src/api.ts
 import axios from "axios";
 
 const base = import.meta.env.VITE_API_URL || "http://localhost:4000";
@@ -5,20 +6,19 @@ const api = axios.create({
   baseURL: base.replace(/\/$/, "") + "/api",
 });
 
-// add auth header dynamically to avoid header typing issues
 api.interceptors.request.use((config) => {
   try {
-    const token = localStorage.getItem("token");
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (token) {
-      // ensure headers exists
-      if (!config.headers) config.headers = axios.defaults.headers.common;
-      // cast to simple record to avoid AxiosHeaders type incompatibilities
-      (config.headers as Record<string, string>)[
-        "Authorization"
-      ] = `Bearer ${token}`;
+      if (!config.headers) {
+        (config as any).headers = {};
+      }
+      // assign using a cast to any to avoid strict Axios types during build
+      (config.headers as any)["Authorization"] = `Bearer ${token}`;
     }
   } catch (err) {
-    // running in non-browser env (build) — ignore
+    // ignore during build / tests
   }
   return config;
 });
