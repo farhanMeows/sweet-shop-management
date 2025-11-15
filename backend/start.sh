@@ -9,7 +9,7 @@ echo "[start.sh] Generating prisma client..."
 npx prisma generate
 
 echo "[start.sh] Running seed (idempotent)..."
-ADMIN_EMAIL=${ADMIN_EMAIL:-admin@local.test} ADMIN_PASSWORD=${ADMIN_PASSWORD:-adminpass} npm run db:seed || true
+npm run db:seed 
 
 echo "[start.sh] Starting server..."
 exec node dist/index.js
