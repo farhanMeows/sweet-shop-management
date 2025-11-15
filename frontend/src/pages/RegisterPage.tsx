@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import Toast from "../components/Toast";
 
 export default function RegisterPage() {
-  const [name, setName] = useState("NewUser");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { register } = useAuth();
@@ -32,6 +32,7 @@ export default function RegisterPage() {
     setBusy(true);
     try {
       await register(name.trim(), email.trim(), password);
+      // after successful register, navigate to the app home
       nav("/");
     } catch (e: any) {
       const message =
@@ -75,6 +76,7 @@ export default function RegisterPage() {
               className="mt-1 w-full rounded-lg bg-white/3 px-3 py-2 text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               placeholder="Your name"
               autoComplete="name"
+              aria-label="Full name"
             />
           </label>
 
@@ -87,6 +89,7 @@ export default function RegisterPage() {
               className="mt-1 w-full rounded-lg bg-white/3 px-3 py-2 text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               placeholder="you@example.com"
               autoComplete="email"
+              aria-label="Email"
             />
           </label>
 
@@ -99,6 +102,7 @@ export default function RegisterPage() {
               className="mt-1 w-full rounded-lg bg-white/3 px-3 py-2 text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               placeholder="Choose a strong password"
               autoComplete="new-password"
+              aria-label="Password"
             />
           </label>
 

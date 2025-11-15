@@ -89,22 +89,6 @@ export default function LoginPage() {
             />
           </label>
 
-          <div className="flex items-center justify-between">
-            <label className="inline-flex items-center gap-2 text-sm text-gray-300">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-600 bg-white/3"
-              />
-              Remember me
-            </label>
-            <button
-              type="button"
-              className="text-sm text-indigo-300 hover:underline"
-            >
-              Forgot?
-            </button>
-          </div>
-
           <div className="mt-4">
             <button
               type="submit"
@@ -138,7 +122,11 @@ export default function LoginPage() {
 
           <div className="text-center text-sm text-gray-400">
             Don't have an account?{" "}
-            <button type="button" className="text-indigo-300 hover:underline">
+            <button
+              type="button"
+              onClick={() => nav("/register")}
+              className="text-indigo-300 hover:underline"
+            >
               Sign up
             </button>
           </div>
