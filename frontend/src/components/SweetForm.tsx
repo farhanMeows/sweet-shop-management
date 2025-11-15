@@ -16,8 +16,18 @@ const currencyFormat = (n: number) => {
 const SweetForm: React.FC<Props> = ({ initial, onSaved }) => {
   const [name, setName] = useState(initial?.name ?? "");
   const [category, setCategory] = useState(initial?.category ?? "");
-  const [price, setPrice] = useState<number>(initial?.price ?? 0);
-  const [quantity, setQuantity] = useState<number>(initial?.quantity ?? 0);
+  // store user-typed strings for price & quantity to allow direct typing (no step)
+  const [priceStr, setPriceStr] = useState(
+    initial?.price != null ? String(initial.price) : "0"
+  );
+  const [quantityStr, setQuantityStr] = useState(
+    initial?.quantity != null ? String(initial.quantity) : "0"
+  );
+
+  // numeric parsed values (derived)
+  const parsedPrice = Number(priceStr);
+  const parsedQuantity = Number(quantityStr);
+
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState<string | null>(null);
@@ -27,8 +37,8 @@ const SweetForm: React.FC<Props> = ({ initial, onSaved }) => {
     // if initial changes (when editing different item), sync fields
     setName(initial?.name ?? "");
     setCategory(initial?.category ?? "");
-    setPrice(initial?.price ?? 0);
-    setQuantity(initial?.quantity ?? 0);
+    setPriceStr(initial?.price != null ? String(initial.price) : "0");
+    setQuantityStr(initial?.quantity != null ? String(initial.quantity) : "0");
     setErrors({});
     setSuccess(null);
   }, [initial]);
@@ -36,10 +46,26 @@ const SweetForm: React.FC<Props> = ({ initial, onSaved }) => {
   function validate() {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = "Name is required";
-    if (price <= 0 || Number.isNaN(price))
-      e.price = "Price must be greater than 0";
-    if (quantity < 0 || Number.isNaN(quantity))
-      e.quantity = "Quantity cannot be negative";
+    if (!category.trim()) e.category = "Category is required";
+
+    // price: must be a number > 0
+    if (priceStr.trim() === "") {
+      e.price = "Price is required";
+    } else if (Number.isNaN(parsedPrice) || parsedPrice <= 0) {
+      e.price = "Price must be a number greater than 0";
+    }
+
+    // quantity: must be integer >= 0
+    if (quantityStr.trim() === "") {
+      e.quantity = "Quantity is required";
+    } else if (
+      Number.isNaN(parsedQuantity) ||
+      !Number.isInteger(parsedQuantity) ||
+      parsedQuantity < 0
+    ) {
+      e.quantity = "Quantity must be a non-negative integer";
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -54,8 +80,8 @@ const SweetForm: React.FC<Props> = ({ initial, onSaved }) => {
       const payload = {
         name: name.trim(),
         category: category.trim(),
-        price,
-        quantity,
+        price: Number(parsedPrice),
+        quantity: Number(parsedQuantity),
       };
       if (isEdit) {
         await api.put(`/sweets/${initial.id}`, payload);
@@ -66,15 +92,18 @@ const SweetForm: React.FC<Props> = ({ initial, onSaved }) => {
         // reset fields after create
         setName("");
         setCategory("");
-        setPrice(0);
-        setQuantity(0);
+        setPriceStr("0");
+        setQuantityStr("0");
       }
       onSaved?.();
     } catch (err: any) {
       console.error(err);
       // try to show server error message if available
       const message =
-        err?.response?.data?.message ?? err?.message ?? "Save failed";
+        err?.response?.data?.message ??
+        err?.response?.data?.error ??
+        err?.message ??
+        "Save failed";
       setErrors({ form: message });
     } finally {
       setBusy(false);
@@ -131,11 +160,20 @@ const SweetForm: React.FC<Props> = ({ initial, onSaved }) => {
             Category
           </label>
           <input
-            className="w-full rounded-lg border-0 bg-white/3 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className={`w-full rounded-lg border-0 bg-white/3 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
+              errors.category ? "ring-2 ring-red-500/40" : ""
+            }`}
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder="e.g. Milk Sweets"
+            aria-invalid={!!errors.category}
+            aria-describedby={errors.category ? "error-category" : undefined}
           />
+          {errors.category && (
+            <p id="error-category" className="mt-1 text-xs text-red-300">
+              {errors.category}
+            </p>
+          )}
         </div>
 
         <div>
@@ -143,20 +181,21 @@ const SweetForm: React.FC<Props> = ({ initial, onSaved }) => {
             Price (₹)
           </label>
           <div className="relative">
+            {/* allow direct typing by using text input */}
             <input
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
+              inputMode="decimal"
               className={`w-full rounded-lg border-0 bg-white/3 px-3 py-2 pr-24 text-sm text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
                 errors.price ? "ring-2 ring-red-500/40" : ""
               }`}
-              value={price}
-              onChange={(e) => setPrice(Number(e.target.value))}
+              value={priceStr}
+              onChange={(e) => setPriceStr(e.target.value)}
               aria-invalid={!!errors.price}
               aria-describedby={errors.price ? "error-price" : undefined}
             />
             <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-300">
-              {currencyFormat(price)}
+              {/* show formatted value only when parsed is valid */}
+              {!Number.isNaN(parsedPrice) ? currencyFormat(parsedPrice) : "-"}
             </div>
           </div>
           {errors.price && (
@@ -171,14 +210,13 @@ const SweetForm: React.FC<Props> = ({ initial, onSaved }) => {
             Quantity
           </label>
           <input
-            type="number"
-            step="1"
-            min="0"
+            type="text"
+            inputMode="numeric"
             className={`w-full rounded-lg border-0 bg-white/3 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
               errors.quantity ? "ring-2 ring-red-500/40" : ""
             }`}
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
+            value={quantityStr}
+            onChange={(e) => setQuantityStr(e.target.value)}
             aria-invalid={!!errors.quantity}
             aria-describedby={errors.quantity ? "error-quantity" : undefined}
           />
@@ -237,8 +275,8 @@ const SweetForm: React.FC<Props> = ({ initial, onSaved }) => {
           onClick={() => {
             setName("");
             setCategory("");
-            setPrice(0);
-            setQuantity(0);
+            setPriceStr("0");
+            setQuantityStr("0");
             setErrors({});
           }}
           disabled={busy}

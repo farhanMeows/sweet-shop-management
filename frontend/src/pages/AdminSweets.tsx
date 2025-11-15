@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import api from "../api";
 import { useAuth } from "../auth/AuthContext";
 import SweetForm from "../components/SweetForm";
+import Toast from "../components/Toast";
+import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import RestockModal from "../components/RestockModal";
 
 export default function AdminSweets() {
   const { user } = useAuth();
@@ -15,6 +18,18 @@ export default function AdminSweets() {
   const [totalPages, setTotalPages] = useState<number>(1);
   const perPage = 10; // server uses 10 per page
 
+  // action modals / toasts
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  const [restockTarget, setRestockTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
   useEffect(() => {
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -25,7 +40,6 @@ export default function AdminSweets() {
       setLoading(true);
       const r = await api.get("/sweets", { params: { page: p } });
 
-      // backend returns paged shape: { data, page, perPage, total, totalPages }
       const payload = r.data;
       let items: any[] = [];
       if (Array.isArray(payload)) {
@@ -46,29 +60,48 @@ export default function AdminSweets() {
     } catch (err) {
       console.error("Failed to load sweets", err);
       setSweets([]);
+      setToast("Failed to load sweets");
     } finally {
       setLoading(false);
     }
   }
 
-  async function restock(id: number) {
-    const qty = Number(prompt("Quantity to restock", "10") || "0");
-    if (!qty || qty <= 0) return;
-    await api.post(`/sweets/${id}/restock`, { quantity: qty });
-    await load(page);
+  // wrapper passed to ConfirmDeleteModal
+  async function handleDeleteConfirm(id: number) {
+    setActionBusy(true);
+    try {
+      await api.delete(`/sweets/${id}`);
+      setToast("Sweet deleted");
+      await load(page);
+      setDeleteTarget(null);
+    } catch (err: any) {
+      console.error(err);
+      setToast(err?.response?.data?.error ?? "Delete failed");
+    } finally {
+      setActionBusy(false);
+    }
   }
 
-  async function remove(id: number) {
-    if (!confirm("Delete this sweet?")) return;
-    await api.delete(`/sweets/${id}`);
-    // If deleting the last item on the last page, move back a page if needed
-    // but we'll rely on server returning correct totalPages; just reload current page.
-    await load(page);
+  // wrapper passed to RestockModal
+  async function handleRestockConfirm(id: number, qty: number) {
+    setActionBusy(true);
+    try {
+      if (!qty || qty <= 0) throw new Error("Quantity must be greater than 0");
+      await api.post(`/sweets/${id}/restock`, { quantity: qty });
+      setToast("Stock updated");
+      await load(page);
+      setRestockTarget(null);
+    } catch (err: any) {
+      console.error(err);
+      setToast(err?.response?.data?.error ?? err?.message ?? "Restock failed");
+      // keep modal open so user can retry
+    } finally {
+      setActionBusy(false);
+    }
   }
 
   async function handleCreateSaved() {
     setCreating(false);
-    // reload current page — new item may appear on last page, but this keeps UX simple
     await load(page);
   }
 
@@ -164,14 +197,18 @@ export default function AdminSweets() {
                     </button>
 
                     <button
-                      onClick={() => restock(s.id)}
+                      onClick={() =>
+                        setRestockTarget({ id: s.id, name: s.name })
+                      }
                       className="px-3 py-1.5 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-sm text-gray-100"
                     >
                       Restock
                     </button>
 
                     <button
-                      onClick={() => remove(s.id)}
+                      onClick={() =>
+                        setDeleteTarget({ id: s.id, name: s.name })
+                      }
                       className="px-3 py-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-sm text-gray-100"
                     >
                       Delete
@@ -186,7 +223,7 @@ export default function AdminSweets() {
               <button
                 onClick={() => gotoPage(page - 1)}
                 disabled={page <= 1}
-                className="px-3 py-1 rounded bg-neutral-800/40 hover:bg-neutral-800/60"
+                className="px-3 py-1 rounded bg-neutral-800/40 hover:bg-neutral-800/60 disabled:opacity-50"
               >
                 Previous
               </button>
@@ -198,7 +235,7 @@ export default function AdminSweets() {
               <button
                 onClick={() => gotoPage(page + 1)}
                 disabled={page >= totalPages}
-                className="px-3 py-1 rounded bg-neutral-800/40 hover:bg-neutral-800/60"
+                className="px-3 py-1 rounded bg-neutral-800/40 hover:bg-neutral-800/60 disabled:opacity-50"
               >
                 Next
               </button>
@@ -206,6 +243,32 @@ export default function AdminSweets() {
           </>
         )}
       </div>
+
+      {/* Reusable modals */}
+      <ConfirmDeleteModal
+        open={!!deleteTarget}
+        itemName={deleteTarget?.name}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() =>
+          deleteTarget
+            ? handleDeleteConfirm(deleteTarget.id)
+            : Promise.resolve()
+        }
+      />
+
+      <RestockModal
+        open={!!restockTarget}
+        itemName={restockTarget?.name}
+        initialQty={10}
+        onClose={() => setRestockTarget(null)}
+        onConfirm={(qty) =>
+          restockTarget
+            ? handleRestockConfirm(restockTarget.id, qty)
+            : Promise.resolve()
+        }
+      />
+
+      <Toast message={toast} />
     </div>
   );
 }

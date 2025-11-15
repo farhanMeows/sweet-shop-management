@@ -251,9 +251,7 @@ const App: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-sm text-gray-500">
           <div className="flex items-center justify-between">
             <div>© {new Date().getFullYear()} SweetShop</div>
-            <div className="hidden sm:block">
-              Built with ❤️ — modern responsive UI
-            </div>
+            <div className="hidden sm:block">Built with ❤️ — SweetShop</div>
           </div>
         </div>
       </footer>
