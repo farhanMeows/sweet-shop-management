@@ -118,3 +118,47 @@ export async function restockSweet(req: AuthRequest, res: Response) {
 
   return res.json(updated);
 }
+
+export async function searchSweets(req: Request, res: Response) {
+  const { q, name, category, minPrice, maxPrice, limit, offset } =
+    req.query as any;
+
+  // Build where clause dynamically
+  const where: any = {};
+
+  if (q) {
+    // general query: search in name OR category
+    where.OR = [
+      { name: { contains: String(q), mode: "insensitive" } },
+      { category: { contains: String(q), mode: "insensitive" } },
+    ];
+  }
+
+  if (name) {
+    where.name = { contains: String(name), mode: "insensitive" };
+  }
+
+  if (category) {
+    where.category = { contains: String(category), mode: "insensitive" };
+  }
+
+  const priceFilter: any = {};
+  if (minPrice != null && minPrice !== "") priceFilter.gte = Number(minPrice);
+  if (maxPrice != null && maxPrice !== "") priceFilter.lte = Number(maxPrice);
+  if (Object.keys(priceFilter).length > 0) {
+    where.price = priceFilter;
+  }
+
+  // pagination defaults
+  const take = limit ? Math.min(Number(limit), 100) : 100;
+  const skip = offset ? Number(offset) : 0;
+
+  const sweets = await prisma.sweet.findMany({
+    where,
+    orderBy: { id: "asc" },
+    take,
+    skip,
+  });
+
+  return res.json(sweets);
+}

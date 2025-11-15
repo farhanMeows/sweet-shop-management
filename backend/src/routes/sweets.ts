@@ -8,17 +8,20 @@ import {
   deleteSweet,
   purchaseSweet,
   restockSweet,
+  searchSweets,
 } from "../controllers/sweetController";
 import { authRequired } from "../middleware/authMiddleware";
 
 const router = Router();
 
-router.post("/", authRequired, createSweet); // admin required inside controller
+router.post("/", authRequired, createSweet);
 router.get("/", listSweets);
+
+router.get("/search", searchSweets);
 router.get("/:id", getSweet);
-router.put("/:id", authRequired, updateSweet); // admin required inside controller
-router.delete("/:id", authRequired, deleteSweet); // admin required
-router.post("/:id/purchase", purchaseSweet); // public purchase (no auth)
-router.post("/:id/restock", authRequired, restockSweet); // admin only
+router.put("/:id", authRequired, updateSweet);
+router.delete("/:id", authRequired, deleteSweet);
+router.post("/:id/purchase", purchaseSweet);
+router.post("/:id/restock", authRequired, restockSweet);
 
 export default router;
