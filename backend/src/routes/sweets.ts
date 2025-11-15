@@ -14,10 +14,9 @@ import { authRequired } from "../middleware/authMiddleware";
 
 const router = Router();
 
+router.get("/search", searchSweets);
 router.post("/", authRequired, createSweet);
 router.get("/", listSweets);
-
-router.get("/search", searchSweets);
 router.get("/:id", getSweet);
 router.put("/:id", authRequired, updateSweet);
 router.delete("/:id", authRequired, deleteSweet);

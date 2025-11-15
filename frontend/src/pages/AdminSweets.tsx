@@ -10,28 +10,76 @@ export default function AdminSweets() {
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // pagination state
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const perPage = 10; // server uses 10 per page
+
   useEffect(() => {
-    load();
+    load(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function load() {
-    setLoading(true);
-    const r = await api.get("/sweets");
-    setSweets(r.data);
-    setLoading(false);
+  async function load(p = 1) {
+    try {
+      setLoading(true);
+      const r = await api.get("/sweets", { params: { page: p } });
+
+      // backend returns paged shape: { data, page, perPage, total, totalPages }
+      const payload = r.data;
+      let items: any[] = [];
+      if (Array.isArray(payload)) {
+        items = payload;
+        setPage(1);
+        setTotalPages(1);
+      } else if (payload && Array.isArray(payload.data)) {
+        items = payload.data;
+        setPage(payload.page || p);
+        setTotalPages(payload.totalPages || 1);
+      } else {
+        console.warn("Unexpected /sweets response shape", payload);
+        items = [];
+        setPage(1);
+        setTotalPages(1);
+      }
+      setSweets(items);
+    } catch (err) {
+      console.error("Failed to load sweets", err);
+      setSweets([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function restock(id: number) {
     const qty = Number(prompt("Quantity to restock", "10") || "0");
     if (!qty || qty <= 0) return;
     await api.post(`/sweets/${id}/restock`, { quantity: qty });
-    await load();
+    await load(page);
   }
 
   async function remove(id: number) {
     if (!confirm("Delete this sweet?")) return;
     await api.delete(`/sweets/${id}`);
-    await load();
+    // If deleting the last item on the last page, move back a page if needed
+    // but we'll rely on server returning correct totalPages; just reload current page.
+    await load(page);
+  }
+
+  async function handleCreateSaved() {
+    setCreating(false);
+    // reload current page — new item may appear on last page, but this keeps UX simple
+    await load(page);
+  }
+
+  async function handleEditSaved() {
+    setEditing(null);
+    await load(page);
+  }
+
+  function gotoPage(p: number) {
+    if (p < 1 || p > totalPages) return;
+    load(p);
   }
 
   if (!user || user.role !== "ADMIN") {
@@ -61,12 +109,7 @@ export default function AdminSweets() {
       {creating && (
         <div className="mb-8 p-4 rounded-xl bg-neutral-900/70 ring-1 ring-white/10">
           <h4 className="text-lg font-semibold mb-3">Create Sweet</h4>
-          <SweetForm
-            onSaved={() => {
-              setCreating(false);
-              load();
-            }}
-          />
+          <SweetForm onSaved={handleCreateSaved} />
         </div>
       )}
 
@@ -74,69 +117,93 @@ export default function AdminSweets() {
       {editing && (
         <div className="mb-8 p-4 rounded-xl bg-neutral-900/70 ring-1 ring-white/10">
           <h4 className="text-lg font-semibold mb-3">Edit Sweet</h4>
-          <SweetForm
-            initial={editing}
-            onSaved={() => {
-              setEditing(null);
-              load();
-            }}
-          />
+          <SweetForm initial={editing} onSaved={handleEditSaved} />
         </div>
       )}
 
       {/* List */}
       <div className="rounded-xl bg-neutral-900/60 ring-1 ring-white/10 p-4">
-        <h3 className="text-xl font-semibold mb-4">All Sweets</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold">All Sweets</h3>
+          <div className="text-sm text-gray-400">
+            Page {page} of {totalPages} — {perPage} / page
+          </div>
+        </div>
 
         {loading ? (
           <div className="text-gray-400 text-sm">Loading...</div>
         ) : sweets.length === 0 ? (
           <div className="text-gray-500 text-sm">No sweets found</div>
         ) : (
-          <ul className="space-y-3">
-            {sweets.map((s) => (
-              <li
-                key={s.id}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg bg-neutral-800/40 border border-white/5 hover:bg-neutral-800/60 transition"
+          <>
+            <ul className="space-y-3">
+              {sweets.map((s) => (
+                <li
+                  key={s.id}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg bg-neutral-800/40 border border-white/5 hover:bg-neutral-800/60 transition"
+                >
+                  <div>
+                    <p className="font-semibold text-gray-100 text-lg">
+                      {s.name}
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      Stock: <span className="text-gray-200">{s.quantity}</span>{" "}
+                      — ₹{s.price}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2 mt-3 sm:mt-0">
+                    <button
+                      onClick={() => {
+                        setEditing(s);
+                        setCreating(false);
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-gray-200"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() => restock(s.id)}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-sm text-gray-100"
+                    >
+                      Restock
+                    </button>
+
+                    <button
+                      onClick={() => remove(s.id)}
+                      className="px-3 py-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-sm text-gray-100"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* Pagination controls */}
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <button
+                onClick={() => gotoPage(page - 1)}
+                disabled={page <= 1}
+                className="px-3 py-1 rounded bg-neutral-800/40 hover:bg-neutral-800/60"
               >
-                <div>
-                  <p className="font-semibold text-gray-100 text-lg">
-                    {s.name}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    Stock: <span className="text-gray-200">{s.quantity}</span> —
-                    ₹{s.price}
-                  </p>
-                </div>
+                Previous
+              </button>
 
-                <div className="flex gap-2 mt-3 sm:mt-0">
-                  <button
-                    onClick={() => {
-                      setEditing(s);
-                      setCreating(false);
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-gray-200"
-                  >
-                    Edit
-                  </button>
+              <div className="text-sm text-gray-300">
+                Page {page} of {totalPages}
+              </div>
 
-                  <button
-                    onClick={() => restock(s.id)}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-sm text-gray-100"
-                  >
-                    Restock
-                  </button>
-
-                  <button
-                    onClick={() => remove(s.id)}
-                    className="px-3 py-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-sm text-gray-100"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+              <button
+                onClick={() => gotoPage(page + 1)}
+                disabled={page >= totalPages}
+                className="px-3 py-1 rounded bg-neutral-800/40 hover:bg-neutral-800/60"
+              >
+                Next
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>

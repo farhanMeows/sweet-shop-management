@@ -5,6 +5,8 @@ import { AuthRequest } from "../middleware/authMiddleware";
 
 const prisma = new PrismaClient();
 
+const DEFAULT_PER_PAGE = 10;
+
 function isAdmin(req: AuthRequest) {
   return req.user && req.user.role === "ADMIN";
 }
@@ -30,8 +32,26 @@ export async function createSweet(req: AuthRequest, res: Response) {
 }
 
 export async function listSweets(_req: Request, res: Response) {
-  const sweets = await prisma.sweet.findMany({ orderBy: { id: "asc" } });
-  return res.json(sweets);
+  const page = Math.max(1, Number((_req.query as any).page) || 1);
+  const perPage = DEFAULT_PER_PAGE;
+
+  const skip = (page - 1) * perPage;
+  const [total, data] = await Promise.all([
+    prisma.sweet.count(),
+    prisma.sweet.findMany({
+      orderBy: { id: "asc" },
+      skip,
+      take: perPage,
+    }),
+  ]);
+
+  return res.json({
+    data,
+    page,
+    perPage,
+    total,
+    totalPages: Math.ceil(total / perPage),
+  });
 }
 
 export async function getSweet(req: Request, res: Response) {
@@ -120,14 +140,14 @@ export async function restockSweet(req: AuthRequest, res: Response) {
 }
 
 export async function searchSweets(req: Request, res: Response) {
-  const { q, name, category, minPrice, maxPrice, limit, offset } =
-    req.query as any;
+  const { q, name, category, minPrice, maxPrice } = req.query as any;
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const perPage = DEFAULT_PER_PAGE;
+  const skip = (page - 1) * perPage;
 
-  // Build where clause dynamically
   const where: any = {};
 
   if (q) {
-    // general query: search in name OR category
     where.OR = [
       { name: { contains: String(q), mode: "insensitive" } },
       { category: { contains: String(q), mode: "insensitive" } },
@@ -149,16 +169,21 @@ export async function searchSweets(req: Request, res: Response) {
     where.price = priceFilter;
   }
 
-  // pagination defaults
-  const take = limit ? Math.min(Number(limit), 100) : 100;
-  const skip = offset ? Number(offset) : 0;
+  const [total, data] = await Promise.all([
+    prisma.sweet.count({ where }),
+    prisma.sweet.findMany({
+      where,
+      orderBy: { id: "asc" },
+      skip,
+      take: perPage,
+    }),
+  ]);
 
-  const sweets = await prisma.sweet.findMany({
-    where,
-    orderBy: { id: "asc" },
-    take,
-    skip,
+  return res.json({
+    data,
+    page,
+    perPage,
+    total,
+    totalPages: Math.ceil(total / perPage),
   });
-
-  return res.json(sweets);
 }
