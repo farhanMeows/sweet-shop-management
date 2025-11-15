@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Install dependencies (copy package.json + lock first)
 COPY package*.json ./
-RUN npm ci --production=false
+RUN npm install
 
 # Copy source
 COPY . .
