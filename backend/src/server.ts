@@ -1,33 +1,36 @@
-// backend/src/server.ts
+// backend/src/server.ts (DEBUG version)
 import express from "express";
-import bodyParser from "body-parser";
 import authRouter from "./routes/auth";
 import meRouter from "./routes/me";
+import sweetsRouter from "./routes/sweets";
+import bodyParser from "body-parser";
 
-/**
- * createApp - builds and returns an Express app WITHOUT listening.
- * This is useful for tests (supertest) and also for programmatic composition.
- */
 export function createApp() {
   const app = express();
+
+  // Very small logger to see incoming requests
+  app.use((req, _res, next) => {
+    console.log(new Date().toISOString(), "INCOMING", req.method, req.url);
+    next();
+  });
+
+  // quick debug route that never touches DB
+  app.get("/health-no-db", (_req, res) => {
+    res.json({ ok: true, db: "skipped" });
+  });
+
   app.use(bodyParser.json());
-
-  // health endpoint
-  app.get("/health", (_req, res) => res.json({ ok: true }));
-
-  // auth routes
   app.use("/api/auth", authRouter);
+  app.use("/api", meRouter); // provides /api/me
+  app.use("/api/sweets", sweetsRouter);
 
-  // protected /api/me (meRouter uses auth middleware)
-  app.use("/api", meRouter);
+  // original health endpoint
+  app.get("/health", (_req, res) => res.json({ ok: true }));
 
   return app;
 }
 
-/**
- * startServer - helper for tests. Returns the Express app instance.
- * Kept async to allow future async init steps if needed.
- */
+// helper used by tests to get app without listening
 export async function startServer() {
   return createApp();
 }
