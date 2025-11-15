@@ -2,32 +2,26 @@
 set -euo pipefail
 
 echo "[start.sh] NODE_ENV=${NODE_ENV:-undefined}"
+echo "[start.sh] RESET_DB=${RESET_DB:-false}"
 
-#############################################
-# 1) FORCE DROP DB BEFORE EVERYTHING
-#############################################
-echo "[start.sh] Dropping database..."
-# Prisma requires a schema path; defaults to ./prisma/schema.prisma
-# This command deletes all tables in the DB.
-npx prisma db push --force-reset --skip-generate
+# If RESET_DB is explicitly true, do a destructive reset (dev/demo only).
+if [ "${RESET_DB:-false}" = "true" ] ; then
+  echo "[start.sh] RESET_DB=true -> performing destructive reset via prisma db push --force-reset"
+  npx prisma db push --force-reset --skip-generate
+  echo "[start.sh] prisma db push --force-reset completed; skipping migrate deploy."
+  # generate client based on schema
+  echo "[start.sh] Generating prisma client..."
+  npx prisma generate
+else
+  echo "[start.sh] Running prisma migrate deploy..."
+  npx prisma migrate deploy
+  echo "[start.sh] Generating prisma client..."
+  npx prisma generate
+fi
 
-#############################################
-# 2) Apply migrations (fresh clean schema)
-#############################################
-echo "[start.sh] Running prisma migrate deploy..."
-npx prisma migrate deploy
+echo "[start.sh] Running seed (idempotent if DB empty)..."
 
-#############################################
-# 3) Generate Prisma client
-#############################################
-echo "[start.sh] Generating prisma client..."
-npx prisma generate
-
-#############################################
-# 4) SEED CHECK: Only run if DB is empty
-#############################################
-echo "[start.sh] Checking if users exist..."
-
+# Check if users exist. If none, run seed. Non-fatal on error.
 HAS_USERS=$(node -e "
   const { PrismaClient } = require('@prisma/client');
   const p = new PrismaClient();
@@ -37,17 +31,14 @@ HAS_USERS=$(node -e "
     .catch(e => { console.error('CHK_ERR', e); process.exit(0); });
 ")
 
-if [ \"$HAS_USERS\" = \"1\" ]; then
-  echo \"[start.sh] Users already present, skipping seed.\"
+if [ "$HAS_USERS" = "1" ]; then
+  echo "[start.sh] Users already present, skipping seed."
 else
-  echo \"[start.sh] No users found — running seed.\"
+  echo "[start.sh] No users found — running seed."
   if ! ADMIN_EMAIL=${ADMIN_EMAIL:-admin@local.test} ADMIN_PASSWORD=${ADMIN_PASSWORD:-adminpass} npm run db:seed; then
-    echo \"[start.sh] WARNING: seed failed, continuing anyway.\"
+    echo "[start.sh] WARNING: seed failed, continuing to start server (check logs)."
   fi
 fi
 
-#############################################
-# 5) Start Server
-#############################################
-echo \"[start.sh] Starting server...\"
+echo "[start.sh] Starting server..."
 exec node dist/index.js
