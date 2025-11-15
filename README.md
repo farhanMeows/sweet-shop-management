@@ -17,15 +17,15 @@ This project fulfills all requirements of an end-to-end CRUD + search applicatio
 
 ### Login Page
 
-`/screenshots/login.png`
+![Login](./screenshots/login.png)
 
 ### Sweet Listing (User View)
 
-`/screenshots/sweets.png`
+![Sweet Listing](./screenshots/sweets.png)
 
 ### Admin Dashboard
 
-`/screenshots/admin.png`
+![Admin Dashboard](./screenshots/admin.png)
 
 ---
 
