@@ -5,7 +5,7 @@ import { startServer } from "../src/server";
 const prisma = new PrismaClient();
 
 let app: any;
-
+// dont know how to fix this typescript error for now
 beforeAll(async () => {
   app = await startServer();
 
