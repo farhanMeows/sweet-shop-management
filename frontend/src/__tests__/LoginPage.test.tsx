@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import LoginPage from "../pages/LoginPage";
 import { AuthProvider } from "../auth/AuthContext";
 import { BrowserRouter } from "react-router-dom";
@@ -20,6 +20,10 @@ describe("LoginPage", () => {
     fireEvent.change(input, { target: { value: "bademail" } });
     const btn = screen.getByRole("button", { name: /login/i });
     fireEvent.click(btn);
-    expect(screen.getByText(/enter a valid email/i)).toBeInTheDocument();
+
+    // There may be multiple places showing the same validation message (inline + toast).
+    // Assert that at least one element contains the message.
+    const matches = screen.getAllByText(/enter a valid email/i);
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 });
