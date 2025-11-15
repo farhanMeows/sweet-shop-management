@@ -3,29 +3,34 @@
 FROM node:18-bullseye-slim AS builder
 WORKDIR /app
 
-# Copy backend package files from repo root's backend/ folder
+# copy package files and install deps
 COPY backend/package*.json ./ 
-# Install deps based on lockfile if present (use npm ci if lockfile exists)
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# Copy backend sources
+# copy source
 COPY backend/ ./
 
-# Build TypeScript
+# build typescript
 RUN npm run build
 
-# Generate Prisma client (requires DATABASE_URL at runtime for some setups; generate here anyway)
+# generate prisma client (schema-based; doesn't need DB at build)
 RUN npx prisma generate
 
 # Stage 2: runtime image
 FROM node:18-bullseye-slim AS runtime
 WORKDIR /app
 
-# Copy prod node_modules and built files from builder
+# copy only runtime artifacts from builder
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./ 
 
-# Expose port and set a non-root user (optional)
+# copy start script from backend folder
+COPY backend/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# expose port
 EXPOSE 4000
-CMD ["node", "dist/index.js"]
+
+# Use start.sh so migrations and seed can run before the server starts.
+CMD ["/app/start.sh"]
