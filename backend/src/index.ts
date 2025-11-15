@@ -1,9 +1,9 @@
-import express from "express";
-
-const app = express();
-app.use(express.json());
-
-app.get("/health", (req, res) => res.json({ ok: true }));
+// backend/src/index.ts
+import { createApp } from "./server";
 
 const port = process.env.PORT || 4000;
-app.listen(port, () => console.log(`Server listening on ${port}`));
+const app = createApp();
+
+app.listen(port, () => {
+  console.log(`Server listening on ${port}`);
+});
