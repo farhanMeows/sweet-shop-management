@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../api";
 import { useAuth } from "../auth/AuthContext";
 import SweetForm from "../components/SweetForm";
@@ -27,7 +27,7 @@ export default function AdminSweets() {
     id: number;
     name: string;
   } | null>(null);
-  const [actionBusy, setActionBusy] = useState(false);
+
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -68,7 +68,6 @@ export default function AdminSweets() {
 
   // wrapper passed to ConfirmDeleteModal
   async function handleDeleteConfirm(id: number) {
-    setActionBusy(true);
     try {
       await api.delete(`/sweets/${id}`);
       setToast("Sweet deleted");
@@ -78,13 +77,11 @@ export default function AdminSweets() {
       console.error(err);
       setToast(err?.response?.data?.error ?? "Delete failed");
     } finally {
-      setActionBusy(false);
     }
   }
 
   // wrapper passed to RestockModal
   async function handleRestockConfirm(id: number, qty: number) {
-    setActionBusy(true);
     try {
       if (!qty || qty <= 0) throw new Error("Quantity must be greater than 0");
       await api.post(`/sweets/${id}/restock`, { quantity: qty });
@@ -96,7 +93,6 @@ export default function AdminSweets() {
       setToast(err?.response?.data?.error ?? err?.message ?? "Restock failed");
       // keep modal open so user can retry
     } finally {
-      setActionBusy(false);
     }
   }
 
