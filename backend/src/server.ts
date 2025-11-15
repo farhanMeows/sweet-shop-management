@@ -36,8 +36,6 @@ export function createApp() {
   // Use CORS middleware
   app.use(cors(corsOptions));
 
-  app.options("*", cors(corsOptions));
-
   app.use((req, _res, next) => {
     console.log(new Date().toISOString(), "INCOMING", req.method, req.url);
     next();
