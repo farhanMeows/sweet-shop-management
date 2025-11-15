@@ -1,4 +1,3 @@
-// SweetsList.tsx
 import React, { useCallback, useEffect, useState } from "react";
 import api from "../api";
 import { useAuth } from "../auth/AuthContext";
