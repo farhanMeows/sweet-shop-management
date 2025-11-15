@@ -1,24 +1,31 @@
 # backend/Dockerfile
-# Use Node 18 LTS
-FROM node:18-bullseye-slim
-
+# Stage 1: build
+FROM node:18-bullseye-slim AS builder
 WORKDIR /app
 
-# Install dependencies (copy package.json + lock first)
-COPY package*.json ./
-RUN npm install
+# Copy backend package files from repo root's backend/ folder
+COPY backend/package*.json ./ 
+# Install deps based on lockfile if present (use npm ci if lockfile exists)
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# Copy source
-COPY . .
+# Copy backend sources
+COPY backend/ ./
 
 # Build TypeScript
 RUN npm run build
 
-# Generate Prisma client (ensure DATABASE_URL is provided at build or runtime; we will generate at runtime to be safe)
+# Generate Prisma client (requires DATABASE_URL at runtime for some setups; generate here anyway)
 RUN npx prisma generate
 
-# Expose port
-EXPOSE 4000
+# Stage 2: runtime image
+FROM node:18-bullseye-slim AS runtime
+WORKDIR /app
 
-# Start via node (built JS in dist/)
+# Copy prod node_modules and built files from builder
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package*.json ./ 
+
+# Expose port and set a non-root user (optional)
+EXPOSE 4000
 CMD ["node", "dist/index.js"]
