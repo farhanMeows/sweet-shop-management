@@ -15,6 +15,14 @@ const SweetForm: React.FC<Props> = ({ initial, onSaved }) => {
   const isEdit = Boolean(initial?.id);
 
   async function save() {
+    if (!name) {
+      alert("Name required");
+      return;
+    }
+    if (price <= 0) {
+      alert("Price must be > 0");
+      return;
+    }
     setBusy(true);
     try {
       if (isEdit) {
