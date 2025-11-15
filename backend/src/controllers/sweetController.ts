@@ -1,4 +1,3 @@
-// backend/src/controllers/sweetController.ts
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { AuthRequest } from "../middleware/authMiddleware";

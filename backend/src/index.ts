@@ -1,4 +1,3 @@
-// backend/src/index.ts
 import { createApp } from "./server";
 
 const port = process.env.PORT || 4000;
