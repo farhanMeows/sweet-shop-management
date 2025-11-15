@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api";
 import { useAuth } from "../auth/AuthContext";
-import { Link } from "react-router-dom";
+import PurchaseModal from "../components/PurchaseModal";
 
 type Sweet = {
   id: number;
@@ -15,34 +15,46 @@ const SweetsList: React.FC = () => {
   const [sweets, setSweets] = useState<Sweet[]>([]);
   const [loading, setLoading] = useState(true);
   const { token } = useAuth();
+  const [selected, setSelected] = useState<Sweet | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    api
-      .get("/sweets")
-      .then((res) => {
-        setSweets(res.data);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function purchase(id: number) {
-    await api.post(`/sweets/${id}/purchase`, { quantity: 1 });
-    // refresh
+  const load = async () => {
+    setLoading(true);
     const res = await api.get("/sweets");
     setSweets(res.data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function confirmPurchase(id: number, qty = 1) {
+    try {
+      await api.post(`/sweets/${id}/purchase`, { quantity: qty });
+      setMsg("Purchase successful");
+      await load();
+    } catch (e: any) {
+      setMsg(e?.response?.data?.error || "Purchase failed");
+    }
   }
 
   if (loading) return <div>Loading...</div>;
   return (
     <div>
       <h2>Sweets</h2>
+      {msg && <div style={{ marginBottom: 8 }}>{msg}</div>}
       <ul>
         {sweets.map((s) => (
-          <li key={s.id}>
+          <li key={s.id} style={{ marginBottom: 8 }}>
             <strong>{s.name}</strong> — {s.category} — ₹{s.price} — stock:{" "}
             {s.quantity}
             <button
-              onClick={() => purchase(s.id)}
+              onClick={() => {
+                setSelected(s);
+                setModalOpen(true);
+              }}
               disabled={s.quantity <= 0}
               style={{ marginLeft: 8 }}
             >
@@ -51,11 +63,16 @@ const SweetsList: React.FC = () => {
           </li>
         ))}
       </ul>
-      {token ? (
-        <div style={{ marginTop: 12 }}>You can buy. </div>
-      ) : (
-        <div style={{ marginTop: 12 }}>Login to buy</div>
-      )}
+
+      <PurchaseModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onConfirm={() =>
+          selected ? confirmPurchase(selected.id, 1) : Promise.resolve()
+        }
+        sweetName={selected?.name}
+        quantity={1}
+      />
     </div>
   );
 };
