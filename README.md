@@ -266,6 +266,7 @@ AI helped diagnose issues such as:
 #### 3. **Database Seeding Assistance**
 
 - Used AI to refine the script structure (batching, randomizers, categories).
+- Used AI for deployment help
 
 ### ✔️ What AI _Was Not_ Used For
 
@@ -290,10 +291,8 @@ However, all core development, architecture, business logic, and frontend experi
 
 # 🌐 Deployment (Optional)
 
-If deployed, add your link here:
-
 ```
-https://your-live-demo.com
+https://sweet-shop-management-kb1844j24-farhans-projects-9ee1759f.vercel.app/
 ```
 
 ---
